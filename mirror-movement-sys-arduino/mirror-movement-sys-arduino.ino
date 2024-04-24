@@ -30,27 +30,27 @@ void setup() {
   l_x_servo.attach(3);
   l_x_servo.write(l_x_servo_pos);
   // Left Y axis servo setup
-  l_y_servo.attach(4);
+  /*l_y_servo.attach(4);
   l_y_servo.write(l_y_servo_pos);
   // Right X axis servo setup
   r_x_servo.attach(5);
   r_x_servo.write(r_x_servo_pos);
   // Right Y axis servo setup
   r_y_servo.attach(6);
-  r_y_servo.write(r_y_servo_pos);
+  r_y_servo.write(r_y_servo_pos);*/
 }
 
 int servo_pos_update(int joystic_val){
   
-  int joystic_map = map(joystic_val, 0, 1023, -10, 10);
+  int joystic_map = map(joystic_val, 0, 1023, 0, 180);
   int servo_pos;
 
   if (joystic_val > 507 || joystic_val < 497) { // Joystick moved significantly
-    int delta = joystic_map > 0 ? 2 : -2; // Determine direction to move servo
+    int delta = joystic_map > 90 ? 2 : -2; // Determine direction to move servo
     servo_pos += delta;
   }
   // Constrain the servo position to valid range (60 to 120)
-  servo_pos = constrain(servo_pos, 60, 120);
+  //servo_pos = constrain(servo_pos, 60, 120);
   return servo_pos;
 }
 
@@ -61,6 +61,11 @@ void print_joystic(){
   Serial.print(joystic_y_val);
   Serial.print(" : button = ");
   Serial.println(joystic_button_state);
+}
+
+void print_servo(){
+  Serial.print("LEFT x = ");
+  Serial.println(l_x_servo_pos);
 }
 
 void loop() {
@@ -91,5 +96,6 @@ void loop() {
     delay(50);
   }
 
-  print_joystic();
+  //print_joystic();
+  print_servo();
 }
