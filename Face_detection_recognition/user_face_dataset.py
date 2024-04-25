@@ -10,7 +10,7 @@ import sys
 def user_input():
     parser = argparse.ArgumentParser(prog='User Face Dataset', 
                                     description='Capture and store new user face ID information', 
-                                    epilog='JCCV - 2024')
+                                    epilog='PI-IMT Equipo #1 - 2024')
     parser.add_argument('-ID',
                         '--input_user_ID',
                         type=str,
