@@ -20,7 +20,15 @@ def user_input():
     args = parser.parse_args()
     return args
 
-def face_detection(user_ID):
+def user_data_storage(path):
+    # Check whether the specified path exists or not
+    isExist = os.path.exists(path)
+    if not isExist:
+        # Create a new directory because it does not exist
+        os.makedirs(path)
+        print("The new directory is created!")
+
+def face_detection(user_ID, path):
     cam = cv2.VideoCapture(0)
     cam.set(3, 640) # set video width
     cam.set(4, 480) # set video height
@@ -38,7 +46,7 @@ def face_detection(user_ID):
             cv2.rectangle(img, (x,y), (x+w,y+h), (255,0,0), 2)     
             count += 1
             # Save the captured image into the datasets folder
-            cv2.imwrite("dataset/User." + str(user_ID) + '.' +  
+            cv2.imwrite(path + "/" + str(user_ID) + '.' +  
                         str(count) + ".jpg", gray[y:y+h,x:x+w])
             cv2.imshow('image', img)
         k = cv2.waitKey(100) & 0xff # Press 'ESC' for exiting video
@@ -46,14 +54,16 @@ def face_detection(user_ID):
             break
         elif count >= 30: # Take 30 face sample and stop video
             break
-    
+    print("User ID images captured!")
     cam.release()
     cv2.destroyAllWindows()
 
 def pipeline():
     user_data = user_input()
     user_ID = user_data.input_user_ID
-    face_detection(user_ID)
+    path = 'dataset\\' + user_ID
+    user_data_storage(path)
+    face_detection(user_ID, path)
 
 if __name__ == '__main__':
     pipeline()
