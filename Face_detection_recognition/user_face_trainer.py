@@ -8,11 +8,10 @@ import cv2
 import numpy as np
 from PIL import Image
 import os
-import argparse
 
 # function to get the images and label data
 def getImagesAndLabels(path,detector):
-    imagePaths = [os.path.join(root, file) for root, dirs, files in os.walk(path) for file in files]
+    imagePaths = [os.path.join(path,f) for f in os.listdir(path)]
     faceSamples=[]
     IDs = []
     for imagePath in imagePaths:
@@ -37,7 +36,7 @@ def pipeline():
     # Save the model into trainer/trainer.yml
     recognizer.write('trainer/trainer.yml') 
     # Print the numer of faces trained and end program
-    print("\n [INFO] {0} faces trained. Exiting Program".format(len(np.unique(ids))))
+    print("\n [INFO] {0} faces trained. Exiting Program".format(len(np.unique(IDs))))
     
 
 if __name__ == '__main__':

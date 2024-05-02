@@ -5,7 +5,6 @@ python user_face_dataset.py  -ID NAME
 """
 
 import cv2
-import os
 import argparse
 import sys
 
@@ -21,15 +20,6 @@ def user_input():
     
     args = parser.parse_args()
     return args
-
-def store_user_dataset(path):
-    # Check whether the specified path exists or not
-    isExist = os.path.exists(path)
-    if not isExist:
-
-        # Create a new directory because it does not exist
-        os.makedirs(path)
-        print("The new directory is created!")
 
 def face_detection(user_ID, path):
     cam = cv2.VideoCapture(0)
@@ -64,8 +54,7 @@ def face_detection(user_ID, path):
 def pipeline():
     user_data = user_input()
     user_ID = user_data.input_user_ID
-    path = "dataset\\" + user_ID
-    store_user_dataset(path)
+    path = "dataset"
     face_detection(user_ID, path)
 
 if __name__ == '__main__':
