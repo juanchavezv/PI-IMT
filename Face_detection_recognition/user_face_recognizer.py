@@ -9,16 +9,14 @@ import cv2
 import numpy as np
 import os 
 
-def face_detection(recognizer,faceCascade,font,user_list):
+def face_detection(recognizer,faceCascade,font,user_name_directory):
     # Initialize and start realtime video capture
-    cam = cv2.VideoCapture(0)
+    cam = cv2.VideoCapture(1)
     cam.set(3, 640) # set video widht
     cam.set(4, 480) # set video height
     # Define min window size to be recognized as a face
     minW = 0.1*cam.get(3)
     minH = 0.1*cam.get(4)
-
-    id = 0
 
     while True:
         ret, img =cam.read()
@@ -30,15 +28,16 @@ def face_detection(recognizer,faceCascade,font,user_list):
             minNeighbors = 5,
             minSize = (int(minW), int(minH)),
         )
+        id = 0
         for(x,y,w,h) in faces:
             cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
             id, confidence = recognizer.predict(gray[y:y+h,x:x+w])
-            
+                
             # If confidence is less them 100 ==> "0" : perfect match 
-            if (confidence > 30):
-                id = user_list[id]
+            if (confidence > 50):
+                id = user_name_directory[id]
                 confidence = "  {0}%".format(round(100 - confidence))
-            elif (confidence < 30):
+            elif (confidence < 50):
                 id = "unknown"
                 confidence = "  {0}%".format(round(100 - confidence))
             
@@ -71,20 +70,24 @@ def face_detection(recognizer,faceCascade,font,user_list):
     cam.release()
     cv2.destroyAllWindows()
 
+def getUserNames(directory):
+    names_dict = {}
+    for filename in os.listdir(directory):
+        # Split filename into base and extension, then further split base by '.'
+        base, _ = os.path.splitext(filename)
+        name = base.split('.')[0]
+        names_dict[name] = True  # Store the name as a key with a placeholder value
+    return list(names_dict.keys())  # Return a list of the unique names
+
 def pipeline():
     recognizer = cv2.face.LBPHFaceRecognizer_create()
     recognizer.read('trainer/trainer.yml')
     cascadePath = "haarcascade_frontalface_default.xml"
     faceCascade = cv2.CascadeClassifier(cascadePath)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    path = 'dataset'
-    id_directory(path)
-    user_ID = [dir_name for dir_name in os.listdir(path)
-                      if os.path.isdir(os.path.join(path, dir_name))]
-    #USER_IDS = ['none',user_ID]
-    #print(user_ID)
-    #print(USER_IDS)
-    face_detection(recognizer,faceCascade,font,user_ID)
+    directory = "dataset"
+    user_name_directory = getUserNames(directory)
+    face_detection(recognizer,faceCascade,font,user_name_directory)
 
 if __name__ == '__main__':
     pipeline()

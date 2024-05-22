@@ -7,6 +7,7 @@ python user_face_dataset.py  -ID NAME
 import cv2
 import argparse
 import sys
+import user_face_trainer
 
 def user_input():
     parser = argparse.ArgumentParser(prog='User Face Dataset', 
@@ -22,7 +23,7 @@ def user_input():
     return args
 
 def face_detection(user_ID, path):
-    cam = cv2.VideoCapture(0)
+    cam = cv2.VideoCapture(1)
     cam.set(3, 640) # set video width
     cam.set(4, 480) # set video height
 
@@ -56,6 +57,7 @@ def pipeline():
     user_ID = user_data.input_user_ID
     path = "dataset"
     face_detection(user_ID, path)
+    user_face_trainer.pipeline()
 
 if __name__ == '__main__':
     pipeline()
