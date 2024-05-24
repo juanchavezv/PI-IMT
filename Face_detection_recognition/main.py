@@ -5,12 +5,28 @@ import cv2
 import user_face_recognizer
 import user_face_dataset
 from queue import Queue
+import serial
+import csv
+import os
 
 # Global variables for the webcam capture, frame queue, and control flags
 cam = None
 frame_queue = Queue(maxsize=10)
 process_frames = True  # Flag to control frame processing
 recognition_active = True  # Flag to indicate if recognition is active
+recognized_name_queue = Queue()  # Queue to get recognized names
+
+# Setup serial communication with Arduino
+def init_serial():
+    try:
+        arduino = serial.Serial('COM3', 9600, timeout=1)  # Replace 'COM3' with the appropriate serial port
+        print("Serial port opened successfully.")
+        return arduino
+    except serial.SerialException as e:
+        print(f"Error opening serial port: {e}")
+        return None
+
+arduino = init_serial()
 
 # Function to capture frames from the camera (Producer)
 def capture_frames():
@@ -27,7 +43,7 @@ def capture_frames():
 
 # Function to run the predetermined OpenCV code for the right frame (Consumer)
 def run_opencv_right(label):
-    user_face_recognizer.pipeline(frame_queue, label, lambda: process_frames)
+    user_face_recognizer.pipeline(frame_queue, label, lambda: process_frames, recognized_name_queue)
 
 # Function to capture user data (Consumer)
 def run_user_data():
@@ -41,6 +57,34 @@ def run_user_data():
     dataset_thread.join()  # Wait for the dataset capturing to complete
     process_frames = True
     recognition_active = True
+
+# Function to handle detection button click
+def detect():
+    if not recognized_name_queue.empty():
+        recognized_name = recognized_name_queue.get()
+        print(f"Recognized Name: {recognized_name}")
+        send_servo_positions_to_arduino(recognized_name, arduino)
+
+def send_servo_positions_to_arduino(user_name, arduino):
+    if arduino is None:
+        print("Arduino is not connected.")
+        return
+    csv_file_path = os.path.join(os.path.dirname(__file__), 'servo_positions.csv')
+    try:
+        with open(csv_file_path, mode='r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                if row[0] == user_name:
+                    print(f"Data for {user_name}: {row}")
+                    servo_positions = f"{user_name},{row[1]},{row[2]},{row[3]},{row[4]}\n"
+                    print(f"Sending servo positions to Arduino: {servo_positions}")
+                    arduino.write(servo_positions.encode())
+    except FileNotFoundError:
+        print(f"File not found: {csv_file_path}")
+    except PermissionError as e:
+        print(f"Permission denied: {e}")
+    except Exception as e:
+        print(f"Error reading the CSV file: {e}")
 
 def UI():
     global name_entry
@@ -81,8 +125,8 @@ def UI():
     run_button.pack(side=tk.LEFT, padx=5)
 
     # Start the recognition process by default
-    second_button = ttk.Button(button_frame, text="Detectar", command=lambda: run_opencv_right(right_label))
-    second_button.pack(side=tk.LEFT, padx=5)
+    detect_button = ttk.Button(button_frame, text="Detectar", command=detect)
+    detect_button.pack(side=tk.LEFT, padx=5)
 
     # Start the OpenCV thread for the right frame
     threading.Thread(target=run_opencv_right, args=(right_label,), daemon=True).start()

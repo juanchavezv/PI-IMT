@@ -2,8 +2,9 @@ import cv2
 import numpy as np
 import os
 from PIL import Image, ImageTk
+import queue
 
-def face_detection(frame_queue, recognizer, faceCascade, font, user_name_directory, label, should_process):
+def face_detection(frame_queue, recognizer, faceCascade, font, user_name_directory, label, should_process, recognized_name_queue):
     while True:
         if frame_queue.empty():
             continue
@@ -31,7 +32,8 @@ def face_detection(frame_queue, recognizer, faceCascade, font, user_name_directo
             if confidence > 40:
                 id = user_name_directory[id]
                 confidence = "  {0}%".format(round(100 - confidence))
-            elif confidence < 40:
+                recognized_name_queue.put(id)  # Send recognized name to queue
+            else:
                 id = "unknown"
                 confidence = "  {0}%".format(round(100 - confidence))
 
@@ -74,7 +76,7 @@ def getUserNames(directory):
         names_dict[name] = True
     return list(names_dict.keys())
 
-def pipeline(frame_queue, label, should_process):
+def pipeline(frame_queue, label, should_process, recognized_name_queue):
     recognizer = cv2.face.LBPHFaceRecognizer_create()
     recognizer.read('trainer/trainer.yml')
     cascadePath = "haarcascade_frontalface_default.xml"
@@ -82,4 +84,4 @@ def pipeline(frame_queue, label, should_process):
     font = cv2.FONT_HERSHEY_SIMPLEX
     directory = "dataset"
     user_name_directory = getUserNames(directory)
-    face_detection(frame_queue, recognizer, faceCascade, font, user_name_directory, label, should_process)
+    face_detection(frame_queue, recognizer, faceCascade, font, user_name_directory, label, should_process, recognized_name_queue)
