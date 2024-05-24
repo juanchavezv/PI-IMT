@@ -8,6 +8,7 @@ from queue import Queue
 import serial
 import csv
 import os
+#falta importar time?
 
 # Global variables for the webcam capture, frame queue, and control flags
 cam = None
