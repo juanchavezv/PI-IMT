@@ -78,7 +78,7 @@ def send_servo_positions_to_arduino(user_name, arduino):
                     print(f"Data for {user_name}: {row}")
                     servo_positions = f"{user_name},{row[1]},{row[2]},{row[3]},{row[4]}\n"
                     print(f"Sending servo positions to Arduino: {servo_positions}")
-                    arduino.write(servo_positions.encode())
+                    arduino.write(servo_positions.encode()) #Probar con serial.write
     except FileNotFoundError:
         print(f"File not found: {csv_file_path}")
     except PermissionError as e:
