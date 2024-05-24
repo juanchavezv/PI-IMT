@@ -8,6 +8,7 @@ from queue import Queue
 import serial
 import csv
 import os
+#falta importar time?
 
 # Global variables for the webcam capture, frame queue, and control flags
 cam = None
@@ -78,7 +79,7 @@ def send_servo_positions_to_arduino(user_name, arduino):
                     print(f"Data for {user_name}: {row}")
                     servo_positions = f"{user_name},{row[1]},{row[2]},{row[3]},{row[4]}\n"
                     print(f"Sending servo positions to Arduino: {servo_positions}")
-                    arduino.write(servo_positions.encode())
+                    arduino.write(servo_positions.encode()) #Probar con ser.write
     except FileNotFoundError:
         print(f"File not found: {csv_file_path}")
     except PermissionError as e:
