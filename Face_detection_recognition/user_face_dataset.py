@@ -1,19 +1,18 @@
 import cv2
-import serial
 import csv
-import serial.tools.list_ports
 import os
 import time
+import serial.tools.list_ports
 
 def list_serial_ports():
     ports = serial.tools.list_ports.comports()
     for port in ports:
         print(f"{port.device}: {port.description}")
 
-def capture_user_data(frame_queue, user_ID):
+def capture_user_data(frame_queue, user_ID, serial_manager):
     path = "dataset"
     face_detection(frame_queue, user_ID, path)
-    read_serial_and_store(user_ID)
+    read_serial_and_store(user_ID, serial_manager)
 
 def face_detection(frame_queue, user_ID, path):
     face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -39,26 +38,14 @@ def face_detection(frame_queue, user_ID, path):
 
     cv2.destroyAllWindows()
 
-def read_serial_and_store(user_ID):
-    # List available ports
-    list_serial_ports()
-    
-    # Configure the serial port (change the port name to match your setup)
-    try:
-        ser = serial.Serial('COM3', 9600, timeout=1)
-        ser.dtr = False  # Disable DTR to prevent Arduino reset
-        ser.rts = False  # Disable RTS to prevent Arduino reset
-        time.sleep(2)    # Wait for a moment after disabling DTR and RTS
-        ser.reset_input_buffer()  # Flush input buffer after disabling DTR and RTS
-    except serial.SerialException as e:
-        print(f"Error opening serial port: {e}")
-        return
-
-    try:
+def read_serial_and_store(user_ID, serial_manager):
+    def read_from_serial():
+        # List available ports
+        list_serial_ports()
         # Read a single line from the serial port
         while True:
-            if ser.in_waiting > 0:
-                line = ser.readline()
+            if serial_manager.serial_port.in_waiting > 0:
+                line = serial_manager.serial_port.readline()
                 try:
                     decoded_line = line.decode('utf-8').strip()
                     print(f"Raw data received: {decoded_line}")  # Debugging: print raw data
@@ -78,14 +65,13 @@ def read_serial_and_store(user_ID):
                         print("Error: Invalid data received from serial port")
                 except UnicodeDecodeError as e:
                     print(f"Error decoding line: {line}, error: {e}")
-    except Exception as e:
-        print(f"Error reading from serial port: {e}")
-    finally:
-        ser.close()
+
+    serial_manager.execute_with_lock(read_from_serial)
 
 if __name__ == '__main__':
     import argparse
     from queue import Queue
+    from main import serial_manager  # Import serial_manager from main
 
     parser = argparse.ArgumentParser(description='Capture user face data and read serial information')
     parser.add_argument('user_ID', type=str, help='User ID')
@@ -93,4 +79,4 @@ if __name__ == '__main__':
 
     # Dummy frame queue for testing (replace with actual queue in production)
     frame_queue = Queue(maxsize=10)
-    capture_user_data(frame_queue, args.user_ID)
+    capture_user_data(frame_queue, args.user_ID, serial_manager)

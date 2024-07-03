@@ -5,10 +5,47 @@ import cv2
 import user_face_recognizer
 import user_face_dataset
 from queue import Queue
-import serial
 import csv
 import os
-#falta importar time?
+import serial
+import time
+
+# SerialPortManager Class
+class SerialPortManager:
+    def __init__(self, port, baudrate=9600):
+        self.port = port
+        self.baudrate = baudrate
+        self.serial_port = None
+        self.lock = threading.Lock()
+
+    def open_port(self):
+        try:
+            self.serial_port = serial.Serial(self.port, self.baudrate, timeout=1)
+            self.serial_port.dtr = False
+            self.serial_port.rts = False
+            time.sleep(2)
+            self.serial_port.reset_input_buffer()
+            print("Serial port opened successfully.")
+        except serial.SerialException as e:
+            print(f"Error opening serial port: {e}")
+
+    def close_port(self):
+        if self.serial_port:
+            self.serial_port.close()
+            self.serial_port = None
+
+    def execute_with_lock(self, func, *args, **kwargs):
+        with self.lock:
+            try:
+                if not self.serial_port or not self.serial_port.is_open:
+                    self.open_port()
+                result = func(*args, **kwargs)
+            finally:
+                self.close_port()
+        return result
+
+# Initialize the serial port manager
+serial_manager = SerialPortManager('COM3')
 
 # Global variables for the webcam capture, frame queue, and control flags
 cam = None
@@ -16,18 +53,6 @@ frame_queue = Queue(maxsize=10)
 process_frames = True  # Flag to control frame processing
 recognition_active = True  # Flag to indicate if recognition is active
 recognized_name_queue = Queue()  # Queue to get recognized names
-
-# Setup serial communication with Arduino
-def init_serial():
-    try:
-        arduino = serial.Serial('COM3', 9600, timeout=1)  # Replace 'COM3' with the appropriate serial port
-        print("Serial port opened successfully.")
-        return arduino
-    except serial.SerialException as e:
-        print(f"Error opening serial port: {e}")
-        return None
-
-arduino = init_serial()
 
 # Function to capture frames from the camera (Producer)
 def capture_frames():
@@ -53,7 +78,7 @@ def run_user_data():
     recognition_active = False
     name = name_entry.get()
     print(f"Running code with name: {name}")
-    dataset_thread = threading.Thread(target=user_face_dataset.capture_user_data, args=(frame_queue, name))
+    dataset_thread = threading.Thread(target=user_face_dataset.capture_user_data, args=(frame_queue, name, serial_manager))
     dataset_thread.start()
     dataset_thread.join()  # Wait for the dataset capturing to complete
     process_frames = True
@@ -64,28 +89,28 @@ def detect():
     if not recognized_name_queue.empty():
         recognized_name = recognized_name_queue.get()
         print(f"Recognized Name: {recognized_name}")
-        send_servo_positions_to_arduino(recognized_name, arduino)
+        send_servo_positions_to_arduino(recognized_name, serial_manager)
 
-def send_servo_positions_to_arduino(user_name, arduino):
-    if arduino is None:
-        print("Arduino is not connected.")
-        return
-    csv_file_path = os.path.join(os.path.dirname(__file__), 'servo_positions.csv')
-    try:
-        with open(csv_file_path, mode='r') as file:
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                if row[0] == user_name:
-                    print(f"Data for {user_name}: {row}")
-                    servo_positions = f"{user_name},{row[1]},{row[2]},{row[3]},{row[4]}\n"
-                    print(f"Sending servo positions to Arduino: {servo_positions}")
-                    arduino.write(servo_positions.encode()) #Probar con ser.write
-    except FileNotFoundError:
-        print(f"File not found: {csv_file_path}")
-    except PermissionError as e:
-        print(f"Permission denied: {e}")
-    except Exception as e:
-        print(f"Error reading the CSV file: {e}")
+def send_servo_positions_to_arduino(user_name, serial_manager):
+    def write_to_serial():
+        csv_file_path = os.path.join(os.path.dirname(__file__), 'servo_positions.csv')
+        try:
+            with open(csv_file_path, mode='r') as file:
+                csv_reader = csv.reader(file)
+                for row in csv_reader:
+                    if row[0] == user_name:
+                        print(f"Data for {user_name}: {row}")
+                        servo_positions = f"{user_name},{row[1]},{row[2]},{row[3]},{row[4]}\n"
+                        print(f"Sending servo positions to Arduino: {servo_positions}")
+                        serial_manager.serial_port.write(servo_positions.encode())
+        except FileNotFoundError:
+            print(f"File not found: {csv_file_path}")
+        except PermissionError as e:
+            print(f"Permission denied: {e}")
+        except Exception as e:
+            print(f"Error reading the CSV file: {e}")
+
+    serial_manager.execute_with_lock(write_to_serial)
 
 def UI():
     global name_entry
@@ -137,7 +162,7 @@ def UI():
 
 def pipeline():
     global cam
-    cam = cv2.VideoCapture(0)
+    cam = cv2.VideoCapture(1)
     cam.set(3, 640)  # set video width
     cam.set(4, 480)  # set video height
 
